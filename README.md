@@ -1,7 +1,7 @@
-# QL Delta Ladder
+# Figgie Simulator
 
-QL Delta Ladder creates FixedRateBonds, places them in Position and Portfolio objects and calculates DV01 of the portfolio dynamically as positions are added / removed. A tkinter display is included for visualization
+Figgie Simulator enables an RL agent to play the card game Figgie
 
-## Installation / Usage
+# Usage
 
-Fork a branch, download, set up venv and run the app.py file
+Run the train.py file to create your own Figgie RL agent

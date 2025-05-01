@@ -102,3 +102,5 @@ cython_debug/
 # Ignore data/output folders
 data/
 output/
+
+figgie_agent.zip
