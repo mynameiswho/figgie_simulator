@@ -105,10 +105,11 @@ class FiggieEnv(gym.Env):
                 print(f'Player {player.player_id} holds {player.get_goal_suit_count(self.game.goal_suit)} of {self.game.goal_suit}')
             payouts = self.game.get_final_scores()
             print(f'Final scores: {payouts}')
-            # Reward agent if ends in first place vs others
+            # Reward agent relative to how it placed in the round
             agent_payout = payouts[0]
-            if agent_payout >= max(payouts):
-                reward = 1
+            sorted_payouts = sorted(payouts, reverse=True)
+            rank = sorted_payouts.index(agent_payout)
+            reward = [1, 0.5, 0.1, 0][rank]
             terminated=True
         else:
             # Agent acts
