@@ -47,6 +47,7 @@ class FiggieEnv(gym.Env):
             {
             'best_buys': spaces.Box(0.0, 2.0, shape=(len(Suits),), dtype=np.float32),
             'best_sells': spaces.Box(0.0, 2.0, shape=(len(Suits),), dtype=np.float32),
+            'own_hand': spaces.Box(0, 12, shape=(len(Suits),), dtype=np.int32)
             }
         )
         
@@ -58,14 +59,17 @@ class FiggieEnv(gym.Env):
     def _get_obs(self):
         best_buys = []
         best_sells = []
+        agent_hand = []
         for suit in Suits:
             bid = self.game.orderbook.best_bid(suit.value)
             ask = self.game.orderbook.best_ask(suit.value)
             best_buys.append(bid[0] if bid else 0.0)
             best_sells.append(ask[0] if ask else 0.0)
+            agent_hand.append(self.game.players[0].get_goal_suit_count(suit))
         return {
             'best_buys': best_buys,
-            'best_sells': best_sells
+            'best_sells': best_sells,
+            'own_hand': agent_hand
         }
 
     # Gym required function (and parameters) to reset the environment
