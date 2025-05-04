@@ -1,5 +1,6 @@
 import random
 from typing import List
+import logging
 
 from orderbook import SuitOrderBook
 from enums import *
@@ -11,9 +12,10 @@ class FiggiePlayer:
         self.hand = []
         self.cash = 350
     
-    def reset(self):
+    def reset(self, player_knocked_out: bool):
         self.hand = []
-        self.cash = 350
+        if player_knocked_out:
+            self.cash = 350
     
     def act(self, offers: dict):
         # The bots act as follows: pick a suit at random, pick a side at random
@@ -23,17 +25,23 @@ class FiggiePlayer:
         side = random.choice(list(Side))
         if side == Side.BUY:
             best_buy = best_buys[suit.value] * 100
+            if best_buy > 10:
+                a = 1
             if best_buy == 0 and self.cash >= 10:
                 # If the side does not contain a quote and is buy and bot has enough cash -> place random quote between 0 and 10
                 return FiggieActions.SHOW.value, suit.value, random.randint(0, 10)/100, side.value
+            # If someone offers to buy at a high price then sell to them
             elif best_buy >= 7 and suit in self.hand:
                 # If the side is buy and contains a bid >= 7 and the bot has the correct card -> sell
                 return FiggieActions.TAKE.value, suit.value, 0, side.value
         elif side == Side.SELL:
             best_sell = best_sells[suit.value] * 100
+            if best_sell > 20:
+                a = 1
             if best_sell == 0 and suit in self.hand:
                 # If the side does not contain a quote and is sell and the bot has the suit -> place random quote between 10 and 20
                 return FiggieActions.SHOW.value, suit.value, random.randint(10, 20)/100, side.value
+            # If someone offers to sell at a low price then buy from them
             elif best_sell <= 13 and self.cash >= 13:
                 # If the side is sell and contains an ask < 13 -> buy
                 return FiggieActions.TAKE.value, suit.value, 0, side.value
@@ -66,7 +74,6 @@ class FiggiePlayer:
 class FiggieGame:
     def __init__(self, players: List[FiggiePlayer]):
         self.players = players
-        self.reset()
 
     def _build_deck(self) -> list:
         deck = []
@@ -93,16 +100,21 @@ class FiggieGame:
         for i, card in enumerate(self.deck):
             self.players[i % len(self.players)].receive_card(card)
 
-    def reset(self):
+    def reset(self, player_knocked_out: bool):
         for player in self.players:
-            player.reset()
+            player.reset(player_knocked_out)
         [player.subtract_cash(50) for player in self.players]
         self.goal_suit = random.choice(list(Suits))
-        self.pot = 200
+        self.pot = 50 * len(self.players)
         self.seconds_passed = 0
         self.orderbook = SuitOrderBook(list(Suits))
         self.deck = self._build_deck()
         self._deal_cards()
+        logging.info('---GAME RESET---')
+        logging.info('Starting state')
+        for player in self.players:
+            logging.info(f'Player {player.player_id} has cash {player.cash}')
+        logging.info(f'Goal suit {self.goal_suit}')
 
     def advance_game_one_second(self):
         self.seconds_passed += 1
@@ -119,26 +131,38 @@ class FiggieGame:
         elif act == FiggieActions.TAKE.value:
             self.accept_offer(player_id, suit, Side(side))
         
-    def accept_offer(self, accepting_id: int, suit: Suits, side: Side):
-        offer = self.orderbook.best(side, suit)
+    def accept_offer(self, aggressor_id: int, suit: Suits, orderbook_side: Side):
+        offer = self.orderbook.best(orderbook_side, suit)
         price = offer[0] * 100
-        seller_id = offer[1]
+        counterpart_id = offer[1]
         # Handle accepting a non-existing price or trying to trade with oneself
-        if seller_id == -1 or seller_id == accepting_id:
+        if counterpart_id == -1 or counterpart_id == aggressor_id:
             return
-        buyer = self.players[accepting_id]
-        seller = self.players[seller_id]
-        # Handle the case where the seller no longer holds the card to trade due to having taken another player's Buy order in the same card and buyer has enough cash
-        if Suits(suit) in seller.hand and buyer.cash >= price:
-            seller.hand.remove(Suits(suit))
-            buyer.hand.append(Suits(suit))
-            buyer.cash -= price
-            seller.cash += price
-            if side == Side.BUY:
-                print(f'Player {accepting_id} sells to Player {seller_id} {Suits(suit)} @ {price}')
-            else:
-                print(f'Player {accepting_id} buys from Player {seller_id} {Suits(suit)} @ {price}')
-            self.orderbook.reset()
+        aggressor = self.players[aggressor_id]
+        counterpart = self.players[counterpart_id]
+        # Counterpart = seller
+        if orderbook_side == Side.SELL:
+            # Counterpart must hold the card to trade and aggressor must have enough cash
+            if Suits(suit) in counterpart.hand and aggressor.cash >= price:
+                counterpart.hand.remove(Suits(suit))
+                aggressor.hand.append(Suits(suit))
+                aggressor.cash -= price
+                counterpart.cash += price
+                logging.info(f'Player {counterpart_id} sells to Player {aggressor_id} {Suits(suit)} @ {price}')
+        # Counterpart is buyer
+        elif orderbook_side == Side.BUY:
+            # Aggressor must hold the card to trade and counterpart must have enough cash
+            if Suits(suit) in aggressor.hand and counterpart.cash >= price:
+                aggressor.hand.remove(Suits(suit))
+                counterpart.hand.append(Suits(suit))
+                aggressor.cash += price
+                counterpart.cash -= price
+                logging.info(f'Player {counterpart_id} buys from Player {aggressor_id} {Suits(suit)} @ {price}')
+        logging.info(f'Player {aggressor_id} has cash {aggressor.cash}')
+        logging.info(f'Player {aggressor_id} has {aggressor.get_goal_suit_count(Suits(suit))} of {Suits(suit)}')
+        logging.info(f'Player {counterpart_id} has cash {counterpart.cash}')
+        logging.info(f'Player {counterpart_id} has {counterpart.get_goal_suit_count(Suits(suit))} of {Suits(suit)}')
+        self.orderbook.reset()
         return True
 
     def game_has_ended(self) -> bool:
