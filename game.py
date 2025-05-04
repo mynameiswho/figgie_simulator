@@ -116,12 +116,12 @@ class FiggieGame:
         self.seconds_passed += 1
     
     def apply_action(self, player_id: int, action: tuple):
-        act = round(action[0])
+        act = action[0]
         if act == FiggieActions.PASS.value:
             return
-        suit = round(action[1])
+        suit = action[1]
         price = action[2]
-        side = round(action[3])
+        side = action[3]
         if act == FiggieActions.SHOW.value:
             self.orderbook.post_order(player_id, suit, price, side)
         elif act == FiggieActions.TAKE.value:

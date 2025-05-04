@@ -7,12 +7,20 @@ from gymnasium.utils.env_checker import check_env
 import numpy as np
 
 from game import FiggieGame, Suits, FiggiePlayer
+from enums import *
 
 # Register this module as a gym environment. Once registered, the id is usable in gym.make().
 register(
     id='figgie-env',                                # call it whatever you want
     entry_point='environment:FiggieEnv', # module_name:class_name
 )
+
+action_log = {
+    'action': [],
+    'suit': [],
+    'price': [],
+    'side': []
+}
 
 # Implement our own gym env, must inherit from gym.Env
 # https://gymnasium.farama.org/api/env/
@@ -36,11 +44,8 @@ class FiggieEnv(gym.Env):
         # Array 1 = suit (as per Suits class)
         # Array 2 = price
         # Array 3 = buy / sell (as per Side class)
-        self.action_space = spaces.Box(
-            low=np.array([0, 0, 0, 0]),
-            high=np.array([2, 3, 1000, 1]),
-            dtype=np.float32
-        )
+
+        self.action_space = spaces.MultiDiscrete([3, 4, 150, 2])
 
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
@@ -56,7 +61,6 @@ class FiggieEnv(gym.Env):
         self.latest_action = 0
         self.latest_obs = 0
         self.player_knocked_out = False
-
 
     def _get_obs(self):
         best_buys = []
@@ -102,6 +106,7 @@ class FiggieEnv(gym.Env):
         terminated = False
 
         self.latest_action = action
+        self._log_agent_action(action)
 
         #Check if game has ended
         reward = 0
@@ -127,7 +132,7 @@ class FiggieEnv(gym.Env):
             if final_cash_from_round[0] < 50:
                 logging.info('Agent knocked, punishing')
                 reward = 0
-            logging.info(f'Reward to agent: {reward}')
+            print(f'Reward: {reward}')
             terminated=True
         else:
             # Agent acts
@@ -157,6 +162,12 @@ class FiggieEnv(gym.Env):
     def render(self):
         logging.debug(f'Latest agent action: {self.latest_action}')
         logging.debug(f'State passed to agent for next action: {self.latest_obs}')
+
+    def _log_agent_action(self, action: tuple):
+        action_log['action'].append(FiggieActions(action[0]))
+        action_log['suit'].append(Suits(action[1]))
+        action_log['price'].append(action[2])
+        action_log['side'].append(Side(action[3]))
 
 # For unit testing
 if __name__=="__main__":
