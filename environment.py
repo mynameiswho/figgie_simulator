@@ -34,20 +34,22 @@ class FiggieEnv(gym.Env):
         # Training code can call action_space.sample() to randomly select an action.
         # Array 0 = action (as per Actions class)
         # Array 1 = suit (as per Suits class)
-        # Array 2 = price normalized by dividing by 100
+        # Array 2 = price
         # Array 3 = buy / sell (as per Side class)
         self.action_space = spaces.Box(
             low=np.array([0, 0, 0, 0]),
-            high=np.array([2, 3, 5, 1]),
+            high=np.array([2, 3, 1000, 1]),
             dtype=np.float32
         )
 
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.Box(0.0, 2.0, shape=(len(Suits),), dtype=np.float32),
-            'best_sells': spaces.Box(0.0, 2.0, shape=(len(Suits),), dtype=np.float32),
-            'own_hand': spaces.Box(0, 12, shape=(len(Suits),), dtype=np.int32)
+            'best_buys': spaces.Box(0, 1000, shape=(len(Suits),), dtype=np.float32),
+            'best_sells': spaces.Box(0, 1000, shape=(len(Suits),), dtype=np.float32),
+            'own_cards': spaces.Box(0, 12, shape=(len(Suits),), dtype=np.float32),
+            'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.float32),
+            'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.float32),
             }
         )
         
@@ -69,31 +71,29 @@ class FiggieEnv(gym.Env):
         return {
             'best_buys': best_buys,
             'best_sells': best_sells,
-            'own_hand': agent_hand
+            'own_cards': agent_hand,
+            'own_cash': self.game.players[0].cash,
+            'time_left': self.game.seconds_passed
         }
 
     # Gym required function (and parameters) to reset the environment
     def reset(self, seed=None, options=None):
-        
         # Reset superclass
         super().reset(seed=seed)
-
         # Reset game, reset player_knocked_out when done
         self.game.reset(self.player_knocked_out)
         self.player_knocked_out = False
-
         # Construct observation state
-        obs = self._get_obs()
-
+        self.latest_obs = self._get_obs()
+        # Reset action state
+        self.latest_action = 0
         # Additional info to return. For debugging or whatever.
         info = {}
-
         # Render environment
         if(self.render_mode=='human'):
             self.render()
-        
         # Return observation and info
-        return obs, info
+        return self.latest_obs, info
 
     # Gym required function (and parameters) to perform an action
     def step(self, action):
@@ -107,7 +107,6 @@ class FiggieEnv(gym.Env):
         reward = 0
         if self.game.game_has_ended():
             logging.info('---GAME HAS ENDED---')
-            logging.info(self.game.goal_suit)
             for player in self.game.players:
                 logging.info(f'Player {player.player_id} holds {player.get_goal_suit_count(self.game.goal_suit)} of {self.game.goal_suit}')
             final_cash_from_round = self.game.get_final_scores()
@@ -139,11 +138,10 @@ class FiggieEnv(gym.Env):
             for player in self.players[1:]:
                 # Fetch latest game state
                 last_obs = self._get_obs()
-
                 # Act and apply
                 action = player.act(last_obs)
                 self.game.apply_action(player.player_id, action)
-                self.game.advance_game_one_second()
+            self.game.advance_game_one_second()
 
             # Construct observation state for agent's next round
             self.latest_obs = self._get_obs()
@@ -157,9 +155,8 @@ class FiggieEnv(gym.Env):
 
     # Gym required function to render environment
     def render(self):
-        logging.info(f'Latest agent action: {self.latest_action}')
-        logging.info(f'State passed to agent for next action: {self.latest_obs}')
-        logging.info(f'Game progress: {self.game.seconds_passed}')
+        logging.debug(f'Latest agent action: {self.latest_action}')
+        logging.debug(f'State passed to agent for next action: {self.latest_obs}')
 
 # For unit testing
 if __name__=="__main__":

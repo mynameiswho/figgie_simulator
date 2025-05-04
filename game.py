@@ -24,23 +24,19 @@ class FiggiePlayer:
         suit = random.choice(list(Suits))
         side = random.choice(list(Side))
         if side == Side.BUY:
-            best_buy = best_buys[suit.value] * 100
-            if best_buy > 10:
-                a = 1
+            best_buy = best_buys[suit.value]
             if best_buy == 0 and self.cash >= 10:
                 # If the side does not contain a quote and is buy and bot has enough cash -> place random quote between 0 and 10
-                return FiggieActions.SHOW.value, suit.value, random.randint(0, 10)/100, side.value
+                return FiggieActions.SHOW.value, suit.value, random.randint(0, 10), side.value
             # If someone offers to buy at a high price then sell to them
             elif best_buy >= 7 and suit in self.hand:
                 # If the side is buy and contains a bid >= 7 and the bot has the correct card -> sell
                 return FiggieActions.TAKE.value, suit.value, 0, side.value
         elif side == Side.SELL:
-            best_sell = best_sells[suit.value] * 100
-            if best_sell > 20:
-                a = 1
+            best_sell = best_sells[suit.value]
             if best_sell == 0 and suit in self.hand:
                 # If the side does not contain a quote and is sell and the bot has the suit -> place random quote between 10 and 20
-                return FiggieActions.SHOW.value, suit.value, random.randint(10, 20)/100, side.value
+                return FiggieActions.SHOW.value, suit.value, random.randint(10, 20), side.value
             # If someone offers to sell at a low price then buy from them
             elif best_sell <= 13 and self.cash >= 13:
                 # If the side is sell and contains an ask < 13 -> buy
@@ -120,12 +116,12 @@ class FiggieGame:
         self.seconds_passed += 1
     
     def apply_action(self, player_id: int, action: tuple):
-        act = int(action[0])
+        act = round(action[0])
         if act == FiggieActions.PASS.value:
             return
-        suit = int(action[1])
+        suit = round(action[1])
         price = action[2]
-        side = int(action[3])
+        side = round(action[3])
         if act == FiggieActions.SHOW.value:
             self.orderbook.post_order(player_id, suit, price, side)
         elif act == FiggieActions.TAKE.value:
@@ -133,7 +129,7 @@ class FiggieGame:
         
     def accept_offer(self, aggressor_id: int, suit: Suits, orderbook_side: Side):
         offer = self.orderbook.best(orderbook_side, suit)
-        price = offer[0] * 100
+        price = offer[0]
         counterpart_id = offer[1]
         # Handle accepting a non-existing price or trying to trade with oneself
         if counterpart_id == -1 or counterpart_id == aggressor_id:
@@ -158,10 +154,6 @@ class FiggieGame:
                 aggressor.cash += price
                 counterpart.cash -= price
                 logging.info(f'Player {counterpart_id} buys from Player {aggressor_id} {Suits(suit)} @ {price}')
-        logging.info(f'Player {aggressor_id} has cash {aggressor.cash}')
-        logging.info(f'Player {aggressor_id} has {aggressor.get_goal_suit_count(Suits(suit))} of {Suits(suit)}')
-        logging.info(f'Player {counterpart_id} has cash {counterpart.cash}')
-        logging.info(f'Player {counterpart_id} has {counterpart.get_goal_suit_count(Suits(suit))} of {Suits(suit)}')
         self.orderbook.reset()
         return True
 

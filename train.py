@@ -1,4 +1,5 @@
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from environment import FiggieEnv
 import logging
 
@@ -8,8 +9,9 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-env = FiggieEnv('human')
+dummyenv = DummyVecEnv([lambda: FiggieEnv('human')])
+vecenv = VecNormalize(dummyenv, norm_reward=False)
 
-model = PPO("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=100000)
+model = PPO("MultiInputPolicy", vecenv, verbose=1)
+model.learn(total_timesteps=1_000_000)
 model.save("figgie_agent")
