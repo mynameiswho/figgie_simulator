@@ -14,7 +14,7 @@ class OrderBook:
     def post_order(self, side, price, player_id):
         arrival_id = next(self.counter)
         order = (price, player_id)
-        if side == Side.BUY.value:
+        if side == FiggieSide.BUY.value:
             heapq.heappush(self.bids, (-price, arrival_id, order))
         else:  # 'sell'
             heapq.heappush(self.asks, (price, arrival_id, order))
@@ -36,31 +36,31 @@ class OrderBook:
 
 
 class SuitOrderBook:
-    def __init__(self, suits: List[Suits]):
+    def __init__(self, suits: List[FiggieSuit]):
         self.suits = suits
         self.reset()
     
     def reset(self):
-        self.books = {suit.value: OrderBook() for suit in self.suits}
+        self.books = {suit: OrderBook() for suit in self.suits}
 
-    def post_order(self, player_id, suit, price, side):
+    def post_order(self, player_id: int, suit: FiggieSuit, price: int, side: FiggieSide):
         self.books[suit].post_order(side, price, player_id)
 
-    def best(self, side, suit):
-        if side == Side.BUY:
+    def best(self, side: FiggieSide, suit: FiggieSuit):
+        if side == FiggieSide.BUY:
             return self.best_bid(suit)
         return self.best_ask(suit)
 
-    def best_bid(self, suit: int):
+    def best_bid(self, suit: FiggieSuit):
         return self.books[suit].best_bid()
 
-    def best_ask(self, suit: int):
+    def best_ask(self, suit: FiggieSuit):
         return self.books[suit].best_ask()
 
-    def pop_best_bid(self, suit):
+    def pop_best_bid(self, suit: FiggieSuit):
         return self.books[suit].pop_best_bid()
 
-    def pop_best_ask(self, suit):
+    def pop_best_ask(self, suit: FiggieSuit):
         return self.books[suit].pop_best_ask()
 
     def __str__(self):

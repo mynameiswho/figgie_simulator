@@ -6,7 +6,7 @@ from gymnasium.envs.registration import register
 from gymnasium.utils.env_checker import check_env
 import numpy as np
 
-from game import FiggieGame, Suits, FiggiePlayer
+from game import FiggieGame, FiggieSide, FiggiePlayer
 from enums import *
 
 # Register this module as a gym environment. Once registered, the id is usable in gym.make().
@@ -50,9 +50,9 @@ class FiggieEnv(gym.Env):
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.Box(0, 1000, shape=(len(Suits),), dtype=np.float32),
-            'best_sells': spaces.Box(0, 1000, shape=(len(Suits),), dtype=np.float32),
-            'own_cards': spaces.Box(0, 12, shape=(len(Suits),), dtype=np.float32),
+            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSide),), dtype=np.float32),
+            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSide),), dtype=np.float32),
+            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSide),), dtype=np.float32),
             'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.float32),
             'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.float32),
             }
@@ -66,12 +66,12 @@ class FiggieEnv(gym.Env):
         best_buys = []
         best_sells = []
         agent_hand = []
-        for suit in Suits:
+        for suit in FiggieSide:
             bid = self.game.orderbook.best_bid(suit.value)
             ask = self.game.orderbook.best_ask(suit.value)
             best_buys.append(bid[0] if bid else 0.0)
             best_sells.append(ask[0] if ask else 0.0)
-            agent_hand.append(self.game.players[0].get_goal_suit_count(suit))
+            agent_hand.append(self.game.players[0].get_suit_count(suit))
         return {
             'best_buys': best_buys,
             'best_sells': best_sells,
@@ -113,7 +113,7 @@ class FiggieEnv(gym.Env):
         if self.game.game_has_ended():
             logging.info('---GAME HAS ENDED---')
             for player in self.game.players:
-                logging.info(f'Player {player.player_id} holds {player.get_goal_suit_count(self.game.goal_suit)} of {self.game.goal_suit}')
+                logging.info(f'Player {player.player_id} holds {player.get_suit_count(self.game.goal_suit)} of {self.game.goal_suit}')
             final_cash_from_round = self.game.get_final_scores()
             # Assign final cash to players
             for i, player in enumerate(self.game.players):
@@ -144,7 +144,7 @@ class FiggieEnv(gym.Env):
                 # Fetch latest game state
                 last_obs = self._get_obs()
                 # Act and apply
-                action = player.act(last_obs)
+                action = player.generate_action(last_obs)
                 self.game.apply_action(player.player_id, action)
             self.game.advance_game_one_second()
 
@@ -164,10 +164,10 @@ class FiggieEnv(gym.Env):
         logging.debug(f'State passed to agent for next action: {self.latest_obs}')
 
     def _log_agent_action(self, action: tuple):
-        action_log['action'].append(FiggieActions(action[0]))
-        action_log['suit'].append(Suits(action[1]))
+        action_log['action'].append(FiggieInGameAction(action[0]))
+        action_log['suit'].append(FiggieSide(action[1]))
         action_log['price'].append(action[2])
-        action_log['side'].append(Side(action[3]))
+        action_log['side'].append(FiggieSide(action[3]))
 
 # For unit testing
 if __name__=="__main__":
