@@ -50,9 +50,9 @@ class FiggieEnv(gym.Env):
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSide),), dtype=np.float32),
-            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSide),), dtype=np.float32),
-            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSide),), dtype=np.float32),
+            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.float32),
+            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.float32),
+            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSuit),), dtype=np.float32),
             'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.float32),
             'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.float32),
             }
@@ -66,9 +66,9 @@ class FiggieEnv(gym.Env):
         best_buys = []
         best_sells = []
         agent_hand = []
-        for suit in FiggieSide:
-            bid = self.game.orderbook.best_bid(suit.value)
-            ask = self.game.orderbook.best_ask(suit.value)
+        for suit in FiggieSuit:
+            bid = self.game.orderbook.best_bid(suit)
+            ask = self.game.orderbook.best_ask(suit)
             best_buys.append(bid[0] if bid else 0.0)
             best_sells.append(ask[0] if ask else 0.0)
             agent_hand.append(self.game.players[0].get_suit_count(suit))
@@ -105,8 +105,14 @@ class FiggieEnv(gym.Env):
         reward = 0
         terminated = False
 
-        self.latest_action = action
-        self._log_agent_action(action)
+        converted_action = FiggieAction(
+            FiggieInGameAction(action[0]),
+            FiggieSuit(action[1]),
+            FiggieSide(action[3]),
+            action[2]
+            )
+        self.latest_action = converted_action
+        self._log_agent_action(converted_action)
 
         #Check if game has ended
         reward = 0
@@ -136,8 +142,7 @@ class FiggieEnv(gym.Env):
             terminated=True
         else:
             # Agent acts
-            self.game.apply_action(0, action)
-            self.game.advance_game_one_second()
+            self.game.apply_action(0, converted_action)
 
             # Other players act
             for player in self.players[1:]:
@@ -163,11 +168,11 @@ class FiggieEnv(gym.Env):
         logging.debug(f'Latest agent action: {self.latest_action}')
         logging.debug(f'State passed to agent for next action: {self.latest_obs}')
 
-    def _log_agent_action(self, action: tuple):
-        action_log['action'].append(FiggieInGameAction(action[0]))
-        action_log['suit'].append(FiggieSide(action[1]))
-        action_log['price'].append(action[2])
-        action_log['side'].append(FiggieSide(action[3]))
+    def _log_agent_action(self, action: FiggieAction):
+        action_log['action'].append(action.action)
+        action_log['suit'].append(action.suit)
+        action_log['price'].append(action.price)
+        action_log['side'].append(action.acting_intent_side)
 
 # For unit testing
 if __name__=="__main__":
