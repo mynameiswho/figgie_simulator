@@ -21,11 +21,11 @@ model.learn(total_timesteps=100000)
 model.save("figgie_agent")
 
 
-def plot_actions():
+def plot_actions(actions: list, suits: list, sides: list, prices: list):
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
     # Plot Action distribution
     ax = axes[0][0]
-    counts = Counter([a.name for a in action_log['action']])
+    counts = Counter([a.name for a in actions])
 
     ax.bar(counts.keys(), counts.values())
     ax.set_ylabel("Count")
@@ -33,7 +33,7 @@ def plot_actions():
 
     # Plot Suit distribution
     ax = axes[0][1]
-    counts = Counter([a.name for a in action_log['suit']])
+    counts = Counter([a.name for a in suits])
 
     ax.bar(counts.keys(), counts.values())
     ax.set_ylabel("Count")
@@ -42,7 +42,7 @@ def plot_actions():
     # Plot Side distribution
     ax = axes[1][0]
 
-    counts = Counter([a.name for a in action_log['side']])
+    counts = Counter([a.name for a in sides])
 
     ax.bar(counts.keys(), counts.values())
     ax.set_ylabel("Count")
@@ -51,15 +51,18 @@ def plot_actions():
     # Plot Prices
     ax = axes[1][1]
     
-    bin_counts, bin_edges = np.histogram(action_log['price'], bins=100, range=(0.0, 150))
+    bin_counts, bin_edges = np.histogram(prices, bins=15, range=(0.0, 150))
 
     # Bar plot
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     ax.bar(bin_centers, bin_counts, width=0.15)
     ax.set_ylabel("Count")
     ax.set_title("Price Histogram")
-    
-    plt.show()
 
+# All actions
+plot_actions(action_log['action'], action_log['suit'], action_log['side'], action_log['price'])
 
-plot_actions()
+# Last 1000 actions
+plot_actions(action_log['action'][-1000:], action_log['suit'][-1000:], action_log['side'][-1000:], action_log['price'][-1000:])
+
+plt.show()
