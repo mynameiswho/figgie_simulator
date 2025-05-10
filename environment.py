@@ -138,7 +138,6 @@ class FiggieEnv(gym.Env):
             if final_cash_from_round[0] < 50:
                 logging.info('Agent knocked, punishing')
                 reward = 0
-            print(f'Reward: {reward}')
             terminated=True
         else:
             # Agent acts

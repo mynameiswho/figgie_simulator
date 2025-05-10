@@ -26,6 +26,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+output
 
 # Virtual environments
 env/
@@ -33,6 +34,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv
 
 # PyInstaller
 *.manifest
@@ -83,6 +85,7 @@ cython_debug/
 
 # Logs
 *.log
+logs
 
 # Jupyter Notebook
 .ipynb_checkpoints
