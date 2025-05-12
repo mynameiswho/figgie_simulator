@@ -50,17 +50,18 @@ class FiggieEnv(gym.Env):
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.float32),
-            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.float32),
-            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSuit),), dtype=np.float32),
-            'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.float32),
-            'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.float32),
+            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
+            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
+            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSuit),), dtype=np.int64),
+            'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.int64),
+            'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.int64),
             }
         )
         
         self.latest_action = 0
         self.latest_obs = 0
         self.player_knocked_out = False
+        self.player_start_cash = 0
 
     def _get_obs(self):
         best_buys = []
@@ -73,11 +74,11 @@ class FiggieEnv(gym.Env):
             best_sells.append(ask[0] if ask else 0.0)
             agent_hand.append(self.game.players[0].get_suit_count(suit))
         return {
-            'best_buys': best_buys,
-            'best_sells': best_sells,
-            'own_cards': agent_hand,
-            'own_cash': self.game.players[0].cash,
-            'time_left': self.game.seconds_passed
+            'best_buys': np.array(best_buys),
+            'best_sells': np.array(best_sells),
+            'own_cards': np.array(agent_hand),
+            'own_cash': np.array(self.game.players[0].cash),
+            'time_left': np.array(self.game.seconds_passed)
         }
 
     # Gym required function (and parameters) to reset the environment
@@ -91,6 +92,8 @@ class FiggieEnv(gym.Env):
         self.latest_obs = self._get_obs()
         # Reset action state
         self.latest_action = 0
+        # Set AI agent start cash to calculate reward at end of round
+        self.player_start_cash = self.game.players[0].cash
         # Additional info to return. For debugging or whatever.
         info = {}
         # Render environment
@@ -102,9 +105,7 @@ class FiggieEnv(gym.Env):
     # Gym required function (and parameters) to perform an action
     def step(self, action):
         #Initialize
-        reward = 0
         terminated = False
-
         converted_action = FiggieAction(
             FiggieInGameAction(action[0]),
             FiggieSuit(action[1]),
@@ -113,7 +114,6 @@ class FiggieEnv(gym.Env):
             )
         self.latest_action = converted_action
         self._log_agent_action(converted_action)
-
         #Check if game has ended
         reward = 0
         if self.game.game_has_ended():
@@ -127,22 +127,20 @@ class FiggieEnv(gym.Env):
             logging.info(f'Final scores: {final_cash_from_round}')
             # Reward agent relative to how it placed in the round
             agent_payout = final_cash_from_round[0]
-            sorted_payouts = sorted(final_cash_from_round, reverse=True)
-            rank = sorted_payouts.index(agent_payout)
-            reward = [2, 1.5, 1, 0.5][rank]
+            reward = agent_payout - self.player_start_cash
             # If any player has final cash < 50, reset all players cash to restart a series of games
             if any(final_cash < 50 for final_cash in final_cash_from_round):
                 logging.info('Player knocked, resetting all cash')
                 self.player_knocked_out = True
             # If the agent is the one with final cash < 50 assign punishment
-            if final_cash_from_round[0] < 50:
+            if agent_payout < 50:
                 logging.info('Agent knocked, punishing')
-                reward = 0
+                reward = -1000
+            logging.info(f'Reward to agent: {reward}')
             terminated=True
         else:
             # Agent acts
             self.game.apply_action(0, converted_action)
-
             # Other players act
             for player in self.players[1:]:
                 # Fetch latest game state
@@ -151,10 +149,8 @@ class FiggieEnv(gym.Env):
                 action = player.generate_action(last_obs)
                 self.game.apply_action(player.player_id, action)
             self.game.advance_game_one_second()
-
             # Construct observation state for agent's next round
             self.latest_obs = self._get_obs()
-            
         # Render environment
         if(self.render_mode=='human'):
             self.render()
