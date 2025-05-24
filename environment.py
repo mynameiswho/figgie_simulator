@@ -50,9 +50,9 @@ class FiggieEnv(gym.Env):
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.MultiDiscrete([150, 150, 150, 150]),
-            'best_sells': spaces.MultiDiscrete([150, 150, 150, 150]),
-            'own_cards': spaces.MultiDiscrete([12, 12, 12, 12]),
+            'best_buys': spaces.MultiDiscrete([151, 151, 151, 151]),
+            'best_sells': spaces.MultiDiscrete([151, 151, 151, 151]),
+            'own_cards': spaces.MultiDiscrete([13, 13, 13, 13]),
             'own_cash': spaces.Discrete(1200),
             'time_left': spaces.Discrete(241),
             }

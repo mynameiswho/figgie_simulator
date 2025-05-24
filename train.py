@@ -18,7 +18,7 @@ dummyenv = FiggieEnv('human')
 check_env(dummyenv)
 
 model = PPO("MultiInputPolicy", dummyenv, verbose=1)
-model.learn(total_timesteps=10_000)
+model.learn(total_timesteps=500_000)
 model.save("figgie_agent")
 
 def plot_actions(actions: list, suits: list, sides: list, prices: list):
