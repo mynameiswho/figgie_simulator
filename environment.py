@@ -50,11 +50,11 @@ class FiggieEnv(gym.Env):
         # Gym requires defining the observation space. The observation space consists of the best bids / asks per suit
         self.observation_space = spaces.Dict(
             {
-            'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
-            'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
-            'own_cards': spaces.Box(0, 12, shape=(len(FiggieSuit),), dtype=np.int64),
-            'own_cash': spaces.Box(0, 1200, shape=(1,), dtype=np.int64),
-            'time_left': spaces.Box(0, 240, shape=(1,), dtype=np.int64),
+            'best_buys': spaces.MultiDiscrete([150, 150, 150, 150]),
+            'best_sells': spaces.MultiDiscrete([150, 150, 150, 150]),
+            'own_cards': spaces.MultiDiscrete([12, 12, 12, 12]),
+            'own_cash': spaces.Discrete(1200),
+            'time_left': spaces.Discrete(241),
             }
         )
         
@@ -77,8 +77,8 @@ class FiggieEnv(gym.Env):
             'best_buys': np.array(best_buys),
             'best_sells': np.array(best_sells),
             'own_cards': np.array(agent_hand),
-            'own_cash': np.array([self.game.players[0].cash]),
-            'time_left': np.array([self.game.seconds_passed])
+            'own_cash': self.game.players[0].cash,
+            'time_left': self.game.seconds_passed
         }
 
     # Gym required function (and parameters) to reset the environment
@@ -169,6 +169,7 @@ class FiggieEnv(gym.Env):
         action_log['price'].append(action.price)
         action_log['side'].append(action.acting_intent_side)
 
+'''
 # For unit testing
 if __name__=="__main__":
     env = gym.make('figgie-env', render_mode='human')
@@ -185,3 +186,4 @@ if __name__=="__main__":
     rand_action = env.action_space.sample()
     print(rand_action)
     print(env.step(rand_action))
+'''
