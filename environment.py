@@ -53,8 +53,8 @@ class FiggieEnv(gym.Env):
             'best_buys': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
             'best_sells': spaces.Box(0, 1000, shape=(len(FiggieSuit),), dtype=np.int64),
             'own_cards': spaces.Box(0, 12, shape=(len(FiggieSuit),), dtype=np.int64),
-            'own_cash': spaces.Box(0, 1200, shape=(1, ), dtype=np.int64),
-            'time_left': spaces.Box(0, 240, shape=(1, ), dtype=np.int64),
+            'own_cash': spaces.Box(0, 1200, shape=(1,), dtype=np.int64),
+            'time_left': spaces.Box(0, 240, shape=(1,), dtype=np.int64),
             }
         )
         
@@ -77,8 +77,8 @@ class FiggieEnv(gym.Env):
             'best_buys': np.array(best_buys),
             'best_sells': np.array(best_sells),
             'own_cards': np.array(agent_hand),
-            'own_cash': np.array(self.game.players[0].cash),
-            'time_left': np.array(self.game.seconds_passed)
+            'own_cash': np.array([self.game.players[0].cash]),
+            'time_left': np.array([self.game.seconds_passed])
         }
 
     # Gym required function (and parameters) to reset the environment
